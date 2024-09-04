@@ -26,6 +26,7 @@ app.get('/api/votes', (req, res) => {
   res.json(votes);
 });
 
+// 創建新投票
 app.post('/api/votes', (req, res) => {
   const newVote = {
     id: Date.now(),
@@ -34,6 +35,7 @@ app.post('/api/votes', (req, res) => {
     options: req.body.options.map((option, index) => ({
       id: index + 1,
       text: option.text,
+      reason: option.reason,
       votes: 0
     })),
     totalVotes: 0
@@ -42,6 +44,7 @@ app.post('/api/votes', (req, res) => {
   res.status(201).json(newVote);
 });
 
+// 獲取特定投票的詳細信息
 app.get('/api/votes/:id', (req, res) => {
   const vote = votes.find(v => v.id === parseInt(req.params.id));
   if (vote) {
@@ -121,13 +124,21 @@ app.get('/api/vote-results/:id', (req, res) => {
         id: option.id,
         text: option.text,
         votes: option.votes,
-        percentage: vote.totalVotes > 0 ? (option.votes / vote.totalVotes * 100).toFixed(2) : '0.00'
+        percentage: vote.totalVotes > 0 ? (option.votes / vote.totalVotes * 100).toFixed(2) : '0.00',
+        reason: option.reason
       }))
     };
     res.json(results);
   } else {
     res.status(404).send('未找到投票');
   }
+});
+
+// 獲取用戶投票記錄
+app.get('/api/user-votes/:userId', (req, res) => {
+  const userId = req.params.userId;
+  const userVoteIds = userVotes[userId] || [];
+  res.json(userVoteIds);
 });
 
 const PORT = process.env.PORT || 3000;
