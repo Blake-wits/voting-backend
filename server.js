@@ -113,13 +113,18 @@ app.post('/api/cast-vote', (req, res) => {
 app.get('/api/vote-results/:id', (req, res) => {
   const vote = votes.find(v => v.id === parseInt(req.params.id));
   if (vote) {
-    const results = vote.options.map(option => ({
-      id: option.id,
-      text: option.text,
-      votes: option.votes,
-      percentage: (option.votes / vote.totalVotes * 100).toFixed(2)
-    }));
-    res.json({ title: vote.title, totalVotes: vote.totalVotes, results });
+    const results = {
+      id: vote.id,
+      title: vote.title,
+      totalVotes: vote.totalVotes,
+      options: vote.options.map(option => ({
+        id: option.id,
+        text: option.text,
+        votes: option.votes,
+        percentage: vote.totalVotes > 0 ? (option.votes / vote.totalVotes * 100).toFixed(2) : '0.00'
+      }))
+    };
+    res.json(results);
   } else {
     res.status(404).send('未找到投票');
   }
