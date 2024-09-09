@@ -10,11 +10,20 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // 設置文件上傳
-const upload = multer({ dest: 'uploads/' });
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/')
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)) //Appending extension
+  }
+})
+
+const upload = multer({ storage: storage });
 
 // 確保上傳目錄存在
 if (!fs.existsSync('uploads')) {
-    fs.mkdirSync('uploads');
+  fs.mkdirSync('uploads');
 }
 
 // 使用內存存儲作為臨時數據庫
@@ -32,6 +41,7 @@ app.post('/api/votes', (req, res) => {
     id: Date.now(),
     title: req.body.title,
     pdfFilename: req.body.pdfFilename,
+    objFilename: req.body.objFilename, // 新增 OBJ 文件名
     options: req.body.options.map((option, index) => ({
       id: index + 1,
       text: option.text,
@@ -54,26 +64,49 @@ app.get('/api/votes/:id', (req, res) => {
   }
 });
 
-// PDF 上傳 API
-app.post('/api/upload-pdf', upload.single('pdf'), (req, res) => {
-  if (!req.file) {
+// 文件上傳 API (支持 PDF 和 OBJ)
+app.post('/api/upload-files', upload.fields([
+  { name: 'pdf', maxCount: 1 },
+  { name: 'obj', maxCount: 1 }
+]), (req, res) => {
+  const response = {};
+
+  if (req.files['pdf']) {
+    response.pdfFilename = req.files['pdf'][0].filename;
+  }
+
+  if (req.files['obj']) {
+    response.objFilename = req.files['obj'][0].filename;
+  }
+
+  if (Object.keys(response).length === 0) {
     return res.status(400).send('沒有上傳文件。');
   }
-  res.json({ 
-    filename: req.file.filename,
-    path: req.file.path
-  });
+
+  res.json(response);
 });
 
 // 獲取 PDF API
 app.get('/api/pdf/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(__dirname, 'uploads', filename);
-  
+
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
   } else {
     res.status(404).send('未找到 PDF');
+  }
+});
+
+// 獲取 OBJ API
+app.get('/api/obj/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, 'uploads', filename);
+
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('未找到 OBJ 文件');
   }
 });
 
