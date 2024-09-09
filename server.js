@@ -41,7 +41,8 @@ app.post('/api/votes', (req, res) => {
     id: Date.now(),
     title: req.body.title,
     pdfFilename: req.body.pdfFilename,
-    objFilename: req.body.objFilename, // 新增 OBJ 文件名
+    objFilename: req.body.objFilename,
+    glbFilename: req.body.glbFilename, // 新增 GLB 文件名
     options: req.body.options.map((option, index) => ({
       id: index + 1,
       text: option.text,
@@ -64,10 +65,10 @@ app.get('/api/votes/:id', (req, res) => {
   }
 });
 
-// 文件上傳 API (支持 PDF 和 OBJ)
+// 文件上傳 API (支持 PDF, OBJ 和 GLB)
 app.post('/api/upload-files', upload.fields([
   { name: 'pdf', maxCount: 1 },
-  { name: 'obj', maxCount: 1 }
+  { name: 'model', maxCount: 1 }
 ]), (req, res) => {
   const response = {};
 
@@ -75,8 +76,14 @@ app.post('/api/upload-files', upload.fields([
     response.pdfFilename = req.files['pdf'][0].filename;
   }
 
-  if (req.files['obj']) {
-    response.objFilename = req.files['obj'][0].filename;
+  if (req.files['model']) {
+    const modelFile = req.files['model'][0];
+    const ext = path.extname(modelFile.originalname).toLowerCase();
+    if (ext === '.obj') {
+      response.objFilename = modelFile.filename;
+    } else if (ext === '.glb') {
+      response.glbFilename = modelFile.filename;
+    }
   }
 
   if (Object.keys(response).length === 0) {
@@ -107,6 +114,18 @@ app.get('/api/obj/:filename', (req, res) => {
     res.sendFile(filePath);
   } else {
     res.status(404).send('未找到 OBJ 文件');
+  }
+});
+
+// 獲得 GLB API
+app.get('/api/glb/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, 'uploads', filename);
+
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('未找到 GLB 文件');
   }
 });
 
@@ -178,3 +197,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`服務器運行在端口 ${PORT}`);
 });
+
